@@ -44,6 +44,10 @@ stemmed_tokens = [stemmer.stem(word) for word in filtered_tokens]
 lemmatizer = WordNetLemmatizer()
 lemmatized_tokens = [lemmatizer.lemmatize(word) for word in filtered_tokens]
 
+# Reassemble tokens back into text (optional)
+stemmed_text = ' '.join(stemmed_tokens)
+lemmatized_text = ' '.join(lemmatized_tokens)
+
 # POS tagging (optional for NLTK)
 pos_tagged_tokens = pos_tag(lemmatized_tokens)
 
@@ -51,19 +55,17 @@ pos_tagged_tokens = pos_tag(lemmatized_tokens)
 print("\nPreprocessed Tokens (Stemming):\n", stemmed_tokens)
 print("\nPreprocessed Tokens (Lemmatization):\n", lemmatized_tokens)
 
+# Apply spaCy's NER model on lemmatized text (you can switch to stemmed_text if desired)
+doc = nlp(lemmatized_text)
 
 # Filter for specific entity types (e.g., ORGANIZATION, PERSON, etc.)
 relevant_entities = ['ORG', 'PERSON', 'GPE', 'LAW', 'DATE', 'MONEY']
 
-# Apply spaCy's NER model to the extracted text
-doc = nlp(all_text)
-
-# Print Named Entities detected by spaCy
-print("\nNamed Entities (Filtered):\n")
+# Print Named Entities detected by spaCy after lemmatization
+print("\nNamed Entities (Filtered, Post-Lemmatization):\n")
 for ent in doc.ents:
     if ent.label_ in relevant_entities:
         print(f"Entity: {ent.text}, Type: {ent.label_}")
-
 
 # Convert stop_words set to list for TfidfVectorizer
 vectorizer = TfidfVectorizer(max_features=10, stop_words=list(stop_words))

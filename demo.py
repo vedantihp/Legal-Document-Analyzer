@@ -9,10 +9,10 @@ import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Ensure you have the necessary NLTK data files
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
+# nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('wordnet')
+# nltk.download('averaged_perceptron_tagger')
 
 # Path to your PDF file
 pdf_path = 'HertzGroupRealtyTrustInc_20190920_S-11A_EX-10.8_11816941_EX-10.8_Trademark License Agreement.pdf'

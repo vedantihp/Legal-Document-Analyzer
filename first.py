@@ -4,7 +4,6 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
-from nltk import pos_tag
 import spacy
 from spacy.tokens import Span
 from spacy.matcher import Matcher
@@ -14,7 +13,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # nltk.download('punkt')
 # nltk.download('stopwords')
 # nltk.download('wordnet')
-# nltk.download('averaged_perceptron_tagger')
 
 def load_pdf_text(pdf_path):
     """Extract text from a PDF file."""
@@ -57,16 +55,22 @@ def perform_ner(text, nlp, matcher):
     new_entities = []
     for match_id, start, end in matches:
         span = doc[start:end]  # get the span of tokens
-        label = nlp.vocab.strings[match_id]  # get the label (PRODUCT, LEGAL_TERM, etc.)
+        label = nlp.vocab.strings[match_id]  # get the label
         new_entities.append(Span(doc, start, end, label=label))
     
-    # Combine existing and new entities
+    # Combine existing and new entities while avoiding overlaps
     non_overlapping_entities = []
-    for ent in doc.ents:
-        if not any(ent.start <= ne.end and ent.end >= ne.start for ne in new_entities):
-            non_overlapping_entities.append(ent)
+    all_entities = list(doc.ents) + new_entities
+
+    # Use a set to track indices of tokens already included
+    token_indices = set()
     
-    doc.set_ents(non_overlapping_entities + new_entities, default="unmodified")
+    for ent in all_entities:
+        if not any(idx in token_indices for idx in range(ent.start, ent.end)):
+            non_overlapping_entities.append(ent)
+            token_indices.update(range(ent.start, ent.end))
+    
+    doc.set_ents(non_overlapping_entities, default="unmodified")
 
     return doc
 
@@ -84,19 +88,30 @@ def save_to_csv(data, filename):
     print(f"\nData saved to '{filename}'")
 
 def main():
-    pdf_path = 'adobe.pdf'
+    pdf_path = 'Data License Agreement.pdf'
     
     # Load spaCy model
     nlp = spacy.load('en_core_web_sm')
     
     # Initialize Matcher for custom entity patterns
     matcher = Matcher(nlp.vocab)
-    product_pattern = [{"LOWER": "adobe"}, {"LOWER": "creative"}, {"LOWER": "cloud"}]
-    matcher.add("PRODUCT", [product_pattern])
-    legal_terms_pattern = [{"LOWER": {"IN": ["licensor", "licensee", "agreement", "warranty"]}}]
+    
+    # Add patterns for various entities
+    judge_pattern = [{"LOWER": {"IN": ["judge", "magistrate", "justice"]}}]
+    matcher.add("JUDGE", [judge_pattern])
+
+    legal_terms = [
+        "licensor", "licensee", "agreement", "warranty", "indemnity", "termination", 
+        "confidentiality", "liability", "governing law", "jurisdiction", 
+        "dispute resolution", "force majeure", "amendment", "clause", "consideration", 
+        "default", "entitlement", "notice", "execution", "representations", "assurances"
+    ]
+    legal_terms_pattern = [{"LOWER": {"IN": legal_terms}}]
     matcher.add("LEGAL_TERM", [legal_terms_pattern])
+
     version_pattern = [{"TEXT": {"REGEX": r"v\d+\.\d+\.\d+"}}]
     matcher.add("VERSION", [version_pattern])
+
     filetype_pattern = [{"LOWER": {"IN": ["pdf", "exe", "docx", "xlsx"]}}]
     matcher.add("FILETYPE", [filetype_pattern])
 
@@ -107,12 +122,12 @@ def main():
     # Perform NER
     doc = perform_ner(processed_text["lemmatized_text"], nlp, matcher)
     
-    # Filter for specific entity types (e.g., ORGANIZATION, PERSON, etc.)
-    relevant_entities = ['ORG', 'PERSON', 'GPE', 'LAW', 'DATE', 'MONEY', 'PRODUCT', 'LEGAL_TERM', 'VERSION', 'FILETYPE']
+    # Filter for specific entity types
+    relevant_entities = ['ORG', 'PERSON', 'GPE', 'LAW', 'DATE', 'MONEY', 'PRODUCT', 'LEGAL_TERM', 'VERSION', 'FILETYPE', 'JUDGE']
     
     # Prepare data for CSV
     named_entities = [(ent.text, ent.label_) for ent in doc.ents if ent.label_ in relevant_entities]
-    print("\nNamed Entities (Filtered, Post-Lemmatization):\n")
+    print("\nNamed Entities :\n")
     for ent in named_entities:
         print(f"Entity: {ent[0]}, Type: {ent[1]}")
 
